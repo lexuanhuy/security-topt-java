@@ -33,16 +33,22 @@ public class UserDatabase implements Serializable {
         loadFromFile();
     }
 
+    /** Độ dài username theo chuẩn: 3-50 ký tự. */
+    private static final int USERNAME_MIN_LEN = 3;
+    private static final int USERNAME_MAX_LEN = 50;
+
     /**
-     * Đăng ký user mới: kiểm tra trùng username, băm mật khẩu rồi lưu.
-     * @return true nếu đăng ký thành công, false nếu username đã tồn tại.
+     * Đăng ký user mới: kiểm tra username 3-50 ký tự, UNIQUE, băm mật khẩu rồi lưu.
+     * userId và createdAt do User tự sinh.
+     * @return true nếu đăng ký thành công, false nếu username không hợp lệ hoặc đã tồn tại.
      */
     public boolean registerUser(String username, String email, String plainPassword) {
-        String key = username.trim().toLowerCase();
-        if (key.isEmpty()) return false;
+        String trimmed = username != null ? username.trim() : "";
+        String key = trimmed.toLowerCase();
+        if (key.length() < USERNAME_MIN_LEN || key.length() > USERNAME_MAX_LEN) return false;
         if (users.containsKey(key)) return false;
-        String passwordHash = PasswordHasher.hash(plainPassword);
-        User user = new User(username.trim(), email != null ? email.trim() : "", passwordHash);
+        String passwordHash = PasswordHasher.hash(plainPassword != null ? plainPassword : "");
+        User user = new User(trimmed, email != null ? email.trim() : "", passwordHash);
         users.put(key, user);
         saveToFile();
         return true;

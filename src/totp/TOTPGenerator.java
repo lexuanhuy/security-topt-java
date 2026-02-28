@@ -77,6 +77,15 @@ public final class TOTPGenerator {
     }
 
     /**
+     * Mã TOTP 6 số tại thời điểm hiện tại (để đối chiếu với app khi test).
+     */
+    public static String getCurrentCode(String secretBase32) {
+        if (secretBase32 == null || secretBase32.isBlank()) return null;
+        long currentStep = System.currentTimeMillis() / 1000L / TIME_STEP_SECONDS;
+        return generateTOTP(secretBase32.trim(), currentStep);
+    }
+
+    /**
      * Xác thực mã OTP người dùng nhập.
      * Time window ±1 (chấp nhận mã trước/sau 30s) để xử lý lệch đồng hồ (clock drift).
      */

@@ -83,10 +83,16 @@ public class AuthService {
         }
     }
 
+    private static final int USERNAME_MIN = 3;
+    private static final int USERNAME_MAX = 50;
+
     // --- Đăng ký ---
     public RegisterResult register(String username, String email, String password) {
         if (username == null || username.isBlank())
             return new RegisterResult(false, "Username không được để trống.");
+        int len = username.trim().length();
+        if (len < USERNAME_MIN || len > USERNAME_MAX)
+            return new RegisterResult(false, "Username phải từ 3-50 ký tự.");
         if (db.registerUser(username, email, password != null ? password : ""))
             return new RegisterResult(true, "Đăng ký thành công.");
         return new RegisterResult(false, "Username đã tồn tại.");
@@ -111,7 +117,7 @@ public class AuthService {
             return new LoginStep2Result(false, false, "Phiên không hợp lệ.");
         if (code == null) code = "";
         code = code.trim();
-        if (TOTPGenerator.verifyTOTP(user.getTotpSecret(), code))
+        if (TOTPGenerator.verifyTOTP(user.getTotpSecretKey(), code))
             return new LoginStep2Result(true, false, "Xác thực 2FA thành công.");
         if (user.useBackupCode(code)) {
             db.saveToFile();
@@ -140,6 +146,16 @@ public class AuthService {
             return new ActionResult(false, "Không tìm thấy user.");
         db.disableTOTPForUser(username);
         return new ActionResult(true, "Đã tắt TOTP cho user: " + username);
+    }
+
+    /**
+     * Lấy mã TOTP 6 số hiện tại của user (để test đối chiếu với app Authenticator).
+     * @return mã 6 số hoặc null nếu user không tồn tại / chưa bật TOTP.
+     */
+    public String getCurrentTOTPCode(String username) {
+        User u = db.getUser(username);
+        if (u == null || !u.isTotpEnabled()) return null;
+        return TOTPGenerator.getCurrentCode(u.getTotpSecretKey());
     }
 
     public UserDatabase getDatabase() {

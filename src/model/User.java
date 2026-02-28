@@ -1,62 +1,94 @@
 package model;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Model người dùng cho hệ thống MFA-TOTP.
- * Lưu thông tin đăng nhập và trạng thái xác thực hai yếu tố.
+ * Theo chuẩn: userId (UUID), username, email, passwordHash, totpEnabled, totpSecretKey,
+ * totpActivatedAt, backupCodes (10), usedBackupCodes, createdAt.
  */
 public class User implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
+    /** Định danh duy nhất, tự sinh (UUID). */
+    private final String userId;
+    /** Tên đăng nhập, 3-50 ký tự, UNIQUE. */
     private final String username;
+    /** Địa chỉ email hợp lệ. */
     private final String email;
-    /** Băm mật khẩu (format do PasswordHasher quy định, không lưu plaintext). */
+    /** SHA-256 hash của mật khẩu (format salt:hash do PasswordHasher). */
     private String passwordHash;
-    /** Secret key TOTP dạng Base32 (tương thích Google Authenticator). */
-    private String totpSecret;
-    private boolean isTotpEnabled;
-    /** Danh sách mã dự phòng dùng một lần khi mất thiết bị TOTP. */
+    /** Trạng thái TOTP, mặc định false. */
+    private boolean totpEnabled;
+    /** Secret key TOTP dạng Base32; null nếu chưa kích hoạt. */
+    private String totpSecretKey;
+    /** Thời điểm kích hoạt TOTP; null nếu chưa kích hoạt. */
+    private LocalDateTime totpActivatedAt;
+    /** 10 backup codes; null nếu chưa kích hoạt TOTP. */
     private List<String> backupCodes;
-    /** Các backup code đã sử dụng để tránh dùng lại. */
+    /** Tập backup codes đã sử dụng (bắt buộc, mặc định rỗng). */
     private Set<String> usedBackupCodes;
+    /** Thời điểm tạo tài khoản. */
+    private final LocalDateTime createdAt;
 
     public User(String username, String email, String passwordHash) {
+        this.userId = UUID.randomUUID().toString();
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
-        this.totpSecret = null;
-        this.isTotpEnabled = false;
-        this.backupCodes = new ArrayList<>();
+        this.totpEnabled = false;
+        this.totpSecretKey = null;
+        this.totpActivatedAt = null;
+        this.backupCodes = null;
         this.usedBackupCodes = new HashSet<>();
+        this.createdAt = LocalDateTime.now();
     }
 
+    public String getUserId() { return userId; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
-    public String getTotpSecret() { return totpSecret; }
-    public boolean isTotpEnabled() { return isTotpEnabled; }
-    public List<String> getBackupCodes() { return backupCodes == null ? new ArrayList<>() : new ArrayList<>(backupCodes); }
+    public boolean isTotpEnabled() { return totpEnabled; }
+    public String getTotpSecretKey() { return totpSecretKey; }
+    public LocalDateTime getTotpActivatedAt() { return totpActivatedAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
-    /** Bật TOTP: lưu secret Base32 và danh sách backup codes. */
-    public void enableTOTP(String secret, List<String> codes) {
-        this.totpSecret = secret;
-        this.backupCodes = codes != null ? new ArrayList<>(codes) : new ArrayList<>();
-        this.usedBackupCodes = new HashSet<>();
-        this.isTotpEnabled = true;
+    /** Trả về danh sách backup codes (rỗng nếu chưa kích hoạt). */
+    public List<String> getBackupCodes() {
+        return backupCodes == null ? new ArrayList<>() : new ArrayList<>(backupCodes);
     }
 
-    /** Tắt TOTP: xóa secret và backup codes. */
+    public Set<String> getUsedBackupCodes() {
+        return usedBackupCodes == null ? new HashSet<>() : new HashSet<>(usedBackupCodes);
+    }
+
+    /** Bật TOTP: lưu secret Base32, 10 backup codes và thời điểm kích hoạt. */
+    public void enableTOTP(String secret, List<String> codes) {
+        this.totpSecretKey = secret;
+        this.backupCodes = codes != null && codes.size() <= 10
+                ? new ArrayList<>(codes)
+                : (codes != null ? new ArrayList<>(codes.subList(0, Math.min(10, codes.size()))) : new ArrayList<>());
+        this.usedBackupCodes = usedBackupCodes != null ? usedBackupCodes : new HashSet<>();
+        this.usedBackupCodes.clear();
+        this.totpEnabled = true;
+        this.totpActivatedAt = LocalDateTime.now();
+    }
+
+    /** Tắt TOTP: xóa secret, backup codes và thời điểm kích hoạt. */
     public void disableTOTP() {
-        this.totpSecret = null;
-        this.backupCodes = new ArrayList<>();
-        this.usedBackupCodes = new HashSet<>();
-        this.isTotpEnabled = false;
+        this.totpSecretKey = null;
+        this.totpActivatedAt = null;
+        this.backupCodes = null;
+        this.usedBackupCodes = usedBackupCodes != null ? usedBackupCodes : new HashSet<>();
+        this.usedBackupCodes.clear();
+        this.totpEnabled = false;
     }
 
     /**
@@ -65,6 +97,7 @@ public class User implements Serializable {
      */
     public boolean useBackupCode(String code) {
         if (code == null || backupCodes == null) return false;
+        if (usedBackupCodes == null) usedBackupCodes = new HashSet<>();
         if (usedBackupCodes.contains(code)) return false;
         for (String c : backupCodes) {
             if (c.equals(code)) {
