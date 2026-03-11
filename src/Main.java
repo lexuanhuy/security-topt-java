@@ -32,6 +32,7 @@ public class Main {
                 case 3 -> enableTOTP();
                 case 4 -> disableTOTP();
                 case 5 -> showCurrentTOTP();
+                case 6 -> runTOTPTest();
                 case 0 -> {
                     System.out.println("Thoát.");
                     return;
@@ -54,6 +55,7 @@ public class Main {
         System.out.println("3. Bật TOTP");
         System.out.println("4. Tắt TOTP");
         System.out.println("5. Xem mã TOTP hiện tại (test với app Authenticator)");
+        System.out.println("6. Chạy test TOTP (kiểm thử RFC 6238)");
         System.out.println("0. Thoát");
         System.out.print("Chọn: ");
     }
@@ -115,6 +117,26 @@ public class Main {
         }
         System.out.println("\n--- Backup Codes (dùng khi mất app, mỗi code một lần) ---");
         r.backupCodes.forEach(c -> System.out.println("  " + c));
+
+        // Tạo file QR Code nếu có thư viện ZXing trên classpath
+        String qrPath = generateQRIfAvailable(r.otpauthUri, username);
+        if (qrPath != null) {
+            System.out.println("\n--- QR Code ---");
+            System.out.println("  Đã lưu file: " + qrPath);
+            System.out.println("  Mở app Authenticator > Quét mã QR từ file này.");
+        }
+    }
+
+    /** Gọi QRCodeGenerator qua reflection (tránh lỗi biên dịch khi không có ZXing). */
+    private static String generateQRIfAvailable(String otpauthUri, String username) {
+        try {
+            Class<?> c = Class.forName("util.QRCodeGenerator");
+            var m = c.getMethod("generateToFile", String.class, String.class);
+            String file = "qrcode_" + username.replaceAll("[^a-zA-Z0-9_-]", "_") + ".png";
+            return (String) m.invoke(null, otpauthUri, file);
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     static void disableTOTP() {
@@ -135,5 +157,15 @@ public class Main {
         }
         System.out.println("Mã TOTP hiện tại: " + code);
         System.out.println("(So sánh với mã 6 số trong app Authenticator — phải trùng trong cùng cửa sổ ~30 giây.)");
+    }
+
+    /** Chạy bộ test TOTP (generateSecretKey, getCurrentCode, verifyTOTP). */
+    static void runTOTPTest() {
+        try {
+            Class<?> c = Class.forName("test.TOTPTest");
+            c.getMethod("main", String[].class).invoke(null, (Object) new String[0]);
+        } catch (Throwable e) {
+            System.out.println("Không thể chạy test (kiểm tra class test.TOTPTest): " + e.getMessage());
+        }
     }
 }
