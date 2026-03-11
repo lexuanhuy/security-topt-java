@@ -115,6 +115,10 @@ mvn exec:java -Dexec.mainClass="ui.MfaApp"
 
 (Lưu ý: với `exec:java` có thể cần cấu hình `--add-modules javafx.controls,javafx.fxml,javafx.swing` tùy môi trường; `mvn javafx:run` tự xử lý module path.)
 
+Hoặc chạy trên IntelliJ IDEA bằng cách:
+
+![img.png](img.png)
+
 Luồng trên GUI: **Đăng ký** → **Đăng nhập** (user, pass) → nếu đã bật TOTP thì nhập **mã 6 số** hoặc backup code → vào **màn hình chính** (Chào user). Tại đây có thể **Bật TOTP** (hiện dialog QR để quét), **Tắt TOTP**, **Đăng xuất** để test đăng nhập lại.
 
 ### Luồng test cơ bản
