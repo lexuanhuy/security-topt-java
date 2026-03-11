@@ -23,8 +23,16 @@ src/
 │   └── TOTPGenerator.java # Sinh và xác thực mã TOTP (RFC 6238)
 ├── service/
 │   └── AuthService.java   # Lớp dịch vụ xác thực (dùng cho CLI / API sau này)
-└── test/
-    └── TOTPTest.java      # Kiểm thử TOTP (menu 6)
+├── test/
+│   └── TOTPTest.java      # Kiểm thử TOTP (menu 6)
+└── ui/                    # Giao diện JavaFX
+    ├── MfaApp.java        # Application entry, quản lý màn hình
+    ├── WelcomeView.java   # Màn chào (Đăng nhập / Đăng ký)
+    ├── RegisterView.java # Đăng ký
+    ├── LoginView.java    # Đăng nhập bước 1 (user + pass)
+    ├── LoginTOTPView.java # Đăng nhập bước 2 (mã TOTP / backup code)
+    ├── MainView.java     # Màn sau đăng nhập (Bật/Tắt TOTP, Đăng xuất)
+    └── EnableTOTPDialog.java # Dialog QR + Secret + Backup codes khi bật TOTP
 ```
 
 ### Mô tả từng thành phần
@@ -56,6 +64,9 @@ src/
 - **TOTPTest (`test/TOTPTest.java`)**  
   Bộ kiểm thử TOTP: `generateSecretKey()`, `getCurrentCode()`, `verifyTOTP()` đúng/sai, secret null. Chạy từ menu 6 hoặc `java -cp out test.TOTPTest`.
 
+- **Giao diện JavaFX (`ui/`)**  
+  Ứng dụng desktop: Đăng ký, Đăng nhập (bước 1: user/pass, bước 2: mã TOTP hoặc backup code), màn hình chính (Chào user, Bật/Tắt TOTP, Đăng xuất). Khi bật TOTP hiện dialog với **QR Code** (quét bằng Google Authenticator), Secret Key và Backup Codes. Dùng cùng `AuthService`, dữ liệu lưu `users.dat`.
+
 ---
 
 ## Hướng dẫn chạy và test
@@ -86,6 +97,25 @@ mvn exec:java -Dexec.mainClass="Main"
 ```
 
 Maven sẽ tải ZXing; biên dịch cả `QRCodeGenerator`; khi chọn menu 3 (Bật TOTP) sẽ xuất thêm file `qrcode_<username>.png`.
+
+**Cách 3 — Giao diện JavaFX (GUI):**
+
+Cần Maven và JDK 11+. Chạy:
+
+```bash
+mvn compile
+mvn javafx:run
+```
+
+Hoặc chỉ định main class JavaFX:
+
+```bash
+mvn exec:java -Dexec.mainClass="ui.MfaApp"
+```
+
+(Lưu ý: với `exec:java` có thể cần cấu hình `--add-modules javafx.controls,javafx.fxml,javafx.swing` tùy môi trường; `mvn javafx:run` tự xử lý module path.)
+
+Luồng trên GUI: **Đăng ký** → **Đăng nhập** (user, pass) → nếu đã bật TOTP thì nhập **mã 6 số** hoặc backup code → vào **màn hình chính** (Chào user). Tại đây có thể **Bật TOTP** (hiện dialog QR để quét), **Tắt TOTP**, **Đăng xuất** để test đăng nhập lại.
 
 ### Luồng test cơ bản
 

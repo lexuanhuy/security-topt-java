@@ -5,6 +5,7 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 
+import java.awt.image.BufferedImage;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -39,6 +40,26 @@ public final class QRCodeGenerator {
             Path path = Paths.get(outputPath);
             MatrixToImageWriter.writeToPath(matrix, "PNG", path);
             return path.toAbsolutePath().toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Tạo QR Code dạng BufferedImage (để hiển thị trong JavaFX/Swing).
+     * @return BufferedImage hoặc null nếu lỗi
+     */
+    public static BufferedImage generateToBufferedImage(String otpauthUri) {
+        if (otpauthUri == null || otpauthUri.isBlank()) return null;
+        try {
+            QRCodeWriter writer = new QRCodeWriter();
+            BitMatrix matrix = writer.encode(
+                    otpauthUri.trim(),
+                    BarcodeFormat.QR_CODE,
+                    SIZE,
+                    SIZE
+            );
+            return MatrixToImageWriter.toBufferedImage(matrix);
         } catch (Exception e) {
             return null;
         }
